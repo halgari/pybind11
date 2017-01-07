@@ -500,8 +500,28 @@ template<typename T> T& get_or_create_shared_data(const std::string& name) {
     return *ptr;
 }
 
+class error_base
+{
+    std::vector<std::tuple<std::string, std::string, int>> frames;
+public:
+    void add_frame(const std::string funcname, const std::string filename, int lineno)
+    {
+        frames.push_back(std::make_tuple(funcname, filename, lineno));
+    }
+protected:
+    void enqueue_frames()
+    {
+        for(auto frame = frames.begin(); frame != frames.end(); ++frame)
+        {
+            _PyTraceback_Add(std::get<0>(*frame).c_str(),
+                             std::get<1>(*frame).c_str(),
+                             std::get<2>(*frame));
+        }
+    }
+};
+
 /// Fetch and hold an error which was already set in Python
-class error_already_set : public std::runtime_error {
+class error_already_set : public std::runtime_error, public error_base {
 public:
     error_already_set() : std::runtime_error(detail::error_string()) {
         PyErr_Fetch(&type, &value, &trace);
@@ -518,14 +538,17 @@ public:
     error_already_set& operator=(const error_already_set &) = delete;
 
     /// Give the error back to Python
-    void restore() { PyErr_Restore(type, value, trace); type = value = trace = nullptr; }
+    void restore() {
+        PyErr_Restore(type, value, trace); type = value = trace = nullptr;
+        enqueue_frames();
+     }
 
 private:
     PyObject *type, *value, *trace;
 };
 
 /// C++ bindings of builtin Python exceptions
-class builtin_exception : public std::runtime_error {
+class builtin_exception : public std::runtime_error, public error_base {
 public:
     using std::runtime_error::runtime_error;
     virtual void set_error() const = 0; /// Set the error using the Python C API

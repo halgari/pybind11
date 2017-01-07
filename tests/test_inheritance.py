@@ -30,6 +30,14 @@ def test_inheritance(msg):
         Invoked with: <m.Pet object at 0>
     """
 
+def test_traceback_additions():
+    from pybind11_tests import AddInfoToException
+    def f():
+        raise KeyError
+
+    a = AddInfoToException("my-func", "my-file", 42, f)
+    a.run()
+
 
 def test_automatic_upcasting():
     from pybind11_tests import return_class_1, return_class_2, return_class_n, return_none
