@@ -72,3 +72,31 @@ def test_custom(msg):
         except MyException5_1:
             raise RuntimeError("Exception error: caught child from parent")
     assert msg(excinfo.value) == "this is a helper-defined translated exception"
+
+
+def test_adding_frames_to_exceptions():
+    from pybind11_tests import throw_and_add_exception_info, call_and_add_exception_info
+    import sys, traceback
+
+    def get_traceback_frames(tb):
+        return list(map(lambda x: x[2], traceback.extract_tb(tb, 10)))
+
+    def throw_fn():
+        raise KeyError
+
+    try:
+        call_and_add_exception_info("test-func", "test-file", 42, throw_fn)
+        assert False  # Should never get here
+    except KeyError:
+        ex_type, ex, tb = sys.exc_info()
+        assert get_traceback_frames(tb) == ['test_adding_frames_to_exceptions',
+                                            "test-func",
+                                            "throw_fn"]
+
+    try:
+        throw_and_add_exception_info("test-func", "test-file", 42)
+        assert False  # Should never get here
+    except KeyError:
+        ex_type, ex, tb = sys.exc_info()
+        assert get_traceback_frames(tb) == ['test_adding_frames_to_exceptions',
+                                            "test-func"]

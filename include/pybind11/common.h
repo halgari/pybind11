@@ -509,7 +509,7 @@ public:
         frames.push_back(std::make_tuple(funcname, filename, lineno));
     }
 protected:
-    void enqueue_frames()
+    void enqueue_frames() const
     {
         for(auto frame = frames.begin(); frame != frames.end(); ++frame)
         {
@@ -558,7 +558,9 @@ public:
     class name : public builtin_exception { public: \
         using builtin_exception::builtin_exception; \
         name() : name("") { } \
-        void set_error() const override { PyErr_SetString(type, what()); } \
+        void set_error() const override { \
+            PyErr_SetString(type, what()); \
+            enqueue_frames();} \
     };
 
 PYBIND11_RUNTIME_EXCEPTION(stop_iteration, PyExc_StopIteration)

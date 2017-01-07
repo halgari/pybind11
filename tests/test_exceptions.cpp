@@ -59,30 +59,27 @@ class MyException5_1 : public MyException5 {
 };
 
 // Adds debug info to a traceback
-class AddInfoToException
+void call_and_add_exception_info(const std::string funcname, const std::string filename, int lineno, py::object f)
 {
-private:
-    std::string funcname;
-    std::string filename;
-    int lineno;
-    py::object f;
-
-public:
-    AddInfoToException(const std::string funcname, const std::string filename, int lineno, py::object f):
-            funcname(funcname), filename(filename), lineno(lineno), f(f){};
-
-    void run()
-    {
-        try{
-            f();
-        }
-        catch (py::error_already_set& ex) {
-                ex.add_frame(funcname, filename, lineno);
-            throw;
-        };
+    try{
+        f();
     }
+    catch (py::error_base& ex) {
+            ex.add_frame(funcname, filename, lineno);
+        throw;
+    };
+}
 
-};
+void throw_and_add_exception_info(const std::string funcname, const std::string filename, int lineno)
+{
+    try{
+        throw py::key_error();
+    }
+    catch (py::error_base& ex) {
+            ex.add_frame(funcname, filename, lineno);
+        throw;
+    };
+}
 
 void throws1() {
     throw MyException("this error should go to a custom type");
@@ -154,10 +151,8 @@ test_initializer custom_exceptions([](py::module &m) {
         }
     });
 
-    py::class_<AddInfoToException> pet_class(m, "AddInfoToException");
-    pet_class
-            .def(py::init<std::string, std::string, int, py::object>())
-            .def("run", &AddInfoToException::run);
+    m.def("call_and_add_exception_info", &call_and_add_exception_info);
+    m.def("throw_and_add_exception_info", &throw_and_add_exception_info);
 
     // A simple exception translation:
     auto ex5 = py::register_exception<MyException5>(m, "MyException5");
